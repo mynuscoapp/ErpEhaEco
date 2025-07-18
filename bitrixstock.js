@@ -95,6 +95,41 @@ MYSQL_USER = 'erp_eha'
             //});
         });
       });
+
+      app.get('/overallstock', (req, res) => {
+        // connection.connect((err) => {
+        //     if (err) {
+        //         console.error('Error connecting to the database: ' + err.stack);
+        //         return;
+        //     }
+        res.header("Access-Control-Allow-Origin", "*");
+            console.log('Connected to MySQL database as id ' + connection.threadId);
+            if(connection.state === 'disconnected'){
+                connection.connect();
+              }
+            // SQL query to retrieve data
+            const sql = 'select productId , SUM(quantity ) as overallQuantity, SUM(quantityReserved) as overallreserved from bitrix_store_stock_availablity group BY productId ;' ;
+    
+            // Execute the query
+            connection.query(sql, (error, results, fields) => {
+                if (error) {
+                    console.error('Error executing query: ' + error.stack);
+                    return;
+                }
+                console.log('Data retrieved:');
+                res.send(results); // 'results' contains the retrieved rows
+    
+                // Close the connection
+                // connection.end((err) => {
+                //     if (err) {
+                //         console.error('Error closing the connection: ' + err.stack);
+                //         return;
+                //     }
+                //     console.log('Connection closed.');
+                // });
+            //});
+        });
+      });
       
       app.get('/productslist', (req, res) => {
         // connection.connect((err) => {
