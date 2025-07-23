@@ -143,7 +143,7 @@ MYSQL_USER = 'erp_eha'
                 connection.connect();
               }
             // SQL query to retrieve data
-            const sql = 'select id, name as productName, PREVIEW_PICTURE ,CASE WHEN VAT_INCLUDED = "Y" THEN PRICE ELSE (PRICE * 1.18) END as RRP, 18 as vat_per, VAT_INCLUDED, substring(tax_rate, LOCATE('-', tax_rate) + 1) as tax_rate from bitrix_products  WHERE ACTIVE = "Y"' ;
+            const sql = 'select id, name as productName, PREVIEW_PICTURE ,CASE WHEN VAT_INCLUDED = "Y" THEN PRICE ELSE (PRICE * 1.18) END as RRP, 18 as vat_per, VAT_INCLUDED, substring(tax_rate, LOCATE("-", tax_rate) + 1) as tax_rate from bitrix_products  WHERE ACTIVE = "Y"' ;
     
             // Execute the query
             connection.query(sql, (error, results, fields) => {
