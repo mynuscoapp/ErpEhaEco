@@ -143,7 +143,7 @@ MYSQL_USER = 'erp_eha'
                 connection.connect();
               }
             // SQL query to retrieve data
-            const sql = 'select id, name as productName, PREVIEW_PICTURE ,CASE WHEN VAT_INCLUDED = "Y" THEN PRICE ELSE (PRICE * 1.18) END as RRP, 18 as vat_per from bitrix_products  WHERE ACTIVE = "Y"' ;
+            const sql = 'select id, name as productName, PREVIEW_PICTURE ,CASE WHEN VAT_INCLUDED = "Y" THEN PRICE ELSE (PRICE * 1.18) END as RRP, 18 as vat_per, VAT_INCLUDED, substring(tax_rate, LOCATE("-", tax_rate) + 1) as tax_rate from bitrix_products  WHERE ACTIVE = "Y"' ;
     
             // Execute the query
             connection.query(sql, (error, results, fields) => {
@@ -179,6 +179,41 @@ MYSQL_USER = 'erp_eha'
               }
             // SQL query to retrieve data
             const sql = 'SELECT id, name FROM deal_pipeline dp where dp.status = "Yes";' ;
+    
+            // Execute the query
+            connection.query(sql, (error, results, fields) => {
+                if (error) {
+                    console.error('Error executing query: ' + error.stack);
+                    return;
+                }
+                console.log('Data retrieved:');
+                res.send(results); // 'results' contains the retrieved rows
+    
+                // Close the connection
+                // connection.end((err) => {
+                //     if (err) {
+                //         console.error('Error closing the connection: ' + err.stack);
+                //         return;
+                //     }
+                //     console.log('Connection closed.');
+                // });
+            //});
+        });
+      });
+
+      app.get('/pulseusers', (req, res) => {
+        // connection.connect((err) => {
+        //     if (err) {
+        //         console.error('Error connecting to the database: ' + err.stack);
+        //         return;
+        //     }
+        res.header("Access-Control-Allow-Origin", "*");
+            console.log('Connected to MySQL database as id ' + connection.threadId);
+            if(connection.state === 'disconnected'){
+                connection.connect();
+              }
+            // SQL query to retrieve data
+            const sql = 'select * from pulse_users;' ;
     
             // Execute the query
             connection.query(sql, (error, results, fields) => {
