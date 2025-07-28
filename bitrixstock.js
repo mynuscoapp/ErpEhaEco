@@ -8,8 +8,8 @@ const mysql = require('mysql');
 MYSQL_USER = 'erp_eha'
     MYSQL_PASSWORD = 'EhaERP@12345'
     MYSQL_HOST = '147.93.29.200'
+    
     MYSQL_DATABASE= 'erp_eha'
-
     MYSQL_PORT ='3306' 
     // Database connection configuration
     const connection = mysql.createConnection({
