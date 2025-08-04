@@ -251,7 +251,7 @@ MYSQL_USER = 'erp_eha'
           connection.connect();
         }
         // SQL query to retrieve data
-        const sql = 'SELECT API_URL FROM pulse_api_urls;';
+        const sql = 'SELECT API_URL FROM pulse_api_urls WHERE KEY_NAME = "bitrix_api_url";';
           
         // Execute the query
         connection.query(sql, (error, results, fields) => {
