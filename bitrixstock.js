@@ -3,6 +3,9 @@ const app = express();
 const port = 3000;
 const cors = require('cors');
 const mysql = require('mysql');
+app.use(cors());
+app.use(express.json()); // Middleware to parse JSON bodies
+
 
 
 MYSQL_USER = 'erp_eha'
@@ -208,33 +211,123 @@ MYSQL_USER = 'erp_eha'
         //         return;
         //     }
         res.header("Access-Control-Allow-Origin", "*");
-            console.log('Connected to MySQL database as id ' + connection.threadId);
-            if(connection.state === 'disconnected'){
-                connection.connect();
-              }
-            // SQL query to retrieve data
-            const sql = 'select * from pulse_users;' ;
-    
-            // Execute the query
-            connection.query(sql, (error, results, fields) => {
-                if (error) {
-                    console.error('Error executing query: ' + error.stack);
-                    return;
-                }
-                console.log('Data retrieved:');
-                res.send(results); // 'results' contains the retrieved rows
-    
-                // Close the connection
-                // connection.end((err) => {
-                //     if (err) {
-                //         console.error('Error closing the connection: ' + err.stack);
-                //         return;
-                //     }
-                //     console.log('Connection closed.');
-                // });
-            //});
+        console.log('Connected to MySQL database as id ' + connection.threadId);
+        if (connection.state === 'disconnected') {
+          connection.connect();
+        }
+        // SQL query to retrieve data
+        const sql = 'select * from pulse_users;';
+          
+        // Execute the query
+        connection.query(sql, (error, results, fields) => {
+          if (error) {
+            console.error('Error executing query: ' + error.stack);
+            return;
+          }
+          console.log('Data retrieved:');
+          res.send(results); // 'results' contains the retrieved rows
+          
+          // Close the connection
+          // connection.end((err) => {
+          //     if (err) {
+          //         console.error('Error closing the connection: ' + err.stack);
+          //         return;
+          //     }
+          //     console.log('Connection closed.');
+          // });
+          //});
         });
       });
+        
+      app.put('/pulseusers/:id', (req, res) => {
+        const userId = req.params.id;
+        const updatedUser = req.body;
+
+        const sql = `
+          UPDATE pulse_users SET
+          Employee = ?,
+          Email = ?,
+          Mobile = ?,
+          Department = ?,
+          Position = ?,
+          Date_of_birth = ?,
+          Gender = ?
+          WHERE ID = ?
+       `;
+
+        const params = [
+          updatedUser.Employee,
+          updatedUser.Email,
+          updatedUser.Mobile,
+          updatedUser.Department,
+          updatedUser.Position,
+          updatedUser.Date_of_birth,
+          updatedUser.Gender,
+          userId
+        ];
+
+       connection.query(sql, params, (err, result) => {
+          if (err) {
+            console.error('Error updating user:', err);
+            return res.status(500).json({ error: 'Failed to update user' });
+          }
+          console.log('Update result:', result); // Log the result for debugging
+          if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'User not found or no changes made' });
+          }
+          res.json({ message: 'User updated successfully' });
+        });
+      });
+
+      app.post('/pulseusers', (req, res) => {
+        const { Employee, Email, Mobile, Department, Position, Date_of_birth, Gender, FirstName, LastName } = req.body;
+
+        // Step 1: Get MAX ID
+        const getMaxIdQuery = 'SELECT MAX(ID) AS maxId FROM pulse_users';
+        
+        connection.query(getMaxIdQuery, (err, results) => {
+          if (err) {
+            console.error('Error getting max ID:', err);
+            return res.status(500).json({ error: 'Failed to retrieve max ID' });
+          }
+
+          const maxId = results[0].maxId || 0;
+          const newId = maxId + 1;
+
+          // Step 2: Insert user with new ID
+                    const insertQuery = `
+            INSERT INTO pulse_users 
+            (ID, Employee, Email, Mobile, Department, Position, Date_of_birth, Gender, First_name, Last_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `;
+
+          const params = [
+            newId,
+            Employee,
+            Email,
+            Mobile,
+            Department,
+            Position,
+            Date_of_birth,
+            Gender,
+            FirstName,
+            LastName,
+          ];
+
+          connection.query(insertQuery, params, (err, result) => {
+            if (err) {
+              console.error('Error inserting user:', err);
+              return res.status(500).json({ error: 'Failed to add user' });
+            }
+
+            console.log('User added successfully with ID:', newId);
+            res.status(201).json({ message: 'User added successfully', insertedId: newId });
+          });
+        });
+      });
+
+
+
 
       app.get('/customerlist', (req, res) => {
         // connection.connect((err) => {
@@ -331,4 +424,4 @@ MYSQL_USER = 'erp_eha'
     //     next();
     // });
 
-    app.use(cors());
+    
