@@ -70,8 +70,9 @@ MYSQL_USER = 'erp_eha'
         //     }
         res.header("Access-Control-Allow-Origin", "*");
             console.log('Connected to MySQL database as id ' + connection.threadId);
-            if(connection.state === 'disconnected'){
-                connection.connect();
+            if(!connection._connectCalled ) 
+              {
+              connection.connect();
               }
             // SQL query to retrieve data
             const sql = 'SELECT bs.id, s.storeId, bs.storeid as id_of_store, bp.NAME as productName, bp.preview_picture, bs.quantity, bs.quantityReserved FROM bitrix_store_stock_availablity bs ' +
@@ -108,8 +109,9 @@ MYSQL_USER = 'erp_eha'
         //     }
         res.header("Access-Control-Allow-Origin", "*");
             console.log('Connected to MySQL database as id ' + connection.threadId);
-            if(connection.state === 'disconnected'){
-                connection.connect();
+            if(!connection._connectCalled ) 
+              {
+              connection.connect();
               }
             // SQL query to retrieve data
             const sql = 'select productId , SUM(quantity ) as overallQuantity, SUM(quantityReserved) as overallreserved from bitrix_store_stock_availablity group BY productId ;' ;
@@ -143,8 +145,9 @@ MYSQL_USER = 'erp_eha'
         //     }
         res.header("Access-Control-Allow-Origin", "*");
             console.log('Connected to MySQL database as id ' + connection.threadId);
-            if(connection.state === 'disconnected'){
-                connection.connect();
+            if(!connection._connectCalled ) 
+              {
+              connection.connect();
               }
             // SQL query to retrieve data
             const sql = 'select id, name as productName, PREVIEW_PICTURE ,CASE WHEN VAT_INCLUDED = "Y" THEN PRICE ELSE (PRICE * 1.18) END as RRP, 18 as vat_per, VAT_INCLUDED, substring(tax_rate, LOCATE("-", tax_rate) + 1) as tax_rate from bitrix_products  WHERE ACTIVE = "Y"' ;
@@ -178,8 +181,9 @@ MYSQL_USER = 'erp_eha'
         //     }
         res.header("Access-Control-Allow-Origin", "*");
             console.log('Connected to MySQL database as id ' + connection.threadId);
-            if(connection.state === 'disconnected'){
-                connection.connect();
+            if(!connection._connectCalled ) 
+              {
+              connection.connect();
               }
             // SQL query to retrieve data
             const sql = 'SELECT id, name FROM deal_pipeline dp where dp.status = "Yes";' ;
@@ -213,11 +217,48 @@ MYSQL_USER = 'erp_eha'
         //     }
         res.header("Access-Control-Allow-Origin", "*");
         console.log('Connected to MySQL database as id ' + connection.threadId);
-        if (connection.state === 'disconnected') {
+        if(!connection._connectCalled ) 
+          {
           connection.connect();
-        }
+          }
         // SQL query to retrieve data
         const sql = 'select * from pulse_users;';
+          
+        // Execute the query
+        connection.query(sql, (error, results, fields) => {
+          if (error) {
+            console.error('Error executing query: ' + error.stack);
+            return;
+          }
+          console.log('Data retrieved:');
+          res.send(results); // 'results' contains the retrieved rows
+          
+          // Close the connection
+          // connection.end((err) => {
+          //     if (err) {
+          //         console.error('Error closing the connection: ' + err.stack);
+          //         return;
+          //     }
+          //     console.log('Connection closed.');
+          // });
+          //});
+        });
+      });
+
+      app.get('/bitrixapiurl', (req, res) => {
+        // connection.connect((err) => {
+        //     if (err) {
+        //         console.error('Error connecting to the database: ' + err.stack);
+        //         return;
+        //     }
+        res.header("Access-Control-Allow-Origin", "*");
+        console.log('Connected to MySQL database as id ' + connection.threadId);
+        if(!connection._connectCalled ) 
+          {
+          connection.connect();
+          }
+        // SQL query to retrieve data
+        const sql = 'SELECT API_URL FROM pulse_api_urls WHERE KEY_NAME = "bitrix_api_url";';
           
         // Execute the query
         connection.query(sql, (error, results, fields) => {
@@ -338,8 +379,9 @@ MYSQL_USER = 'erp_eha'
         //     }
         res.header("Access-Control-Allow-Origin", "*");
             console.log('Connected to MySQL database as id ' + connection.threadId);
-            if(connection.state === 'disconnected'){
-                connection.connect();
+            if(!connection._connectCalled ) 
+              {
+              connection.connect();
               }
             // SQL query to retrieve data
             const sql = 'SELECT id, name FROM customer_company cc' ;
@@ -373,8 +415,9 @@ MYSQL_USER = 'erp_eha'
         //     }
         res.header("Access-Control-Allow-Origin", "*");
             console.log('Connected to MySQL database as id ' + connection.threadId);
-            if(connection.state === 'disconnected'){
-                connection.connect();
+            if(!connection._connectCalled ) 
+              {
+              connection.connect();
               }
             // SQL query to retrieve data
             const sql = 'select id, s.storeid  as name from store s ;' ;
