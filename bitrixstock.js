@@ -3,6 +3,7 @@ const app = express();
 const port = 3000;
 const cors = require('cors');
 const mysql = require('mysql');
+const { error } = require('console');
 app.use(cors());
 app.use(express.json()); // Middleware to parse JSON bodies
 
@@ -403,6 +404,70 @@ MYSQL_USER = 'erp_eha'
         connection.connect();
         console.log(`Express server listening at https://localhost:${port}`);
       });
+
+      // Add this code after your other endpoints
+
+      app.post('/login', (req, res) => {
+        const { email, password } = req.body;
+        if (connection.state === 'disconnected') {
+          connection.connect();
+        }
+        // Check if user exists with given email and password
+        const sql = 'SELECT Email, Role FROM pulse_users WHERE Email = ? AND password = ? LIMIT 1';
+        connection.query(sql, [email, password], (err, results) => {
+          if (err) {
+            console.error('Error during login:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+          if (results.length === 0) {
+            // No user found or wrong password
+            return res.status(401).json({ error: 'Invalid email or password' });
+          }
+          // Login successful
+          res.json({
+            message: 'Login successful',
+            success: true,
+            user: {
+              email: results[0].Email,
+              role: results[0].Role,
+            }
+          });
+        });
+      });
+
+app.post('/verify-email', (req, res) => {
+  const { email } = req.body;
+
+  const sql = 'SELECT * FROM pulse_users WHERE Email = ? LIMIT 1';
+  connection.query(sql, [email], (err, results) => {
+    if (err) {
+      console.error('Email verification error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    if (results.length > 0) {
+      res.json({ exists: true, userId: results[0].ID });
+    } else {
+      res.json({ exists: false });
+    }
+  });
+});
+
+      app.post('/reset-password', (req, res) => {
+        const { email, newPassword } = req.body;
+        const sql = 'UPDATE pulse_users SET PASSWORD = ? WHERE Email = ?';
+        connection.query(sql, [newPassword, email], (err, result) => {
+          if (err) {
+            console.error('Error resetting password:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+          if (result.affectedRows > 0) {
+            res.json({ success: true, message: 'Password updated successfully' });
+          } else {
+            res.status(404).json({ success: false, message: 'User not found' });
+          }
+        });
+    });
+
 
     //   app.use(function (req, res, next) {
 
