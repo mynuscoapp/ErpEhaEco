@@ -18,12 +18,9 @@ app.use(bodyParser.urlencoded({
   extended: true
 }));
 
-<<<<<<< HEAD
-=======
 const multer = require('multer');
         const upload = multer({ dest: './amazon-file-upload' }); 
 
->>>>>>> 2e8eb6a7f6f781fca2ac7c812277b3e074994994
 MYSQL_USER = 'erp_eha'
 MYSQL_PASSWORD = 'EhaERP@12345'
 MYSQL_HOST = '147.93.29.200'
