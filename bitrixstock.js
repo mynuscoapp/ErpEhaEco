@@ -7,8 +7,6 @@ const { error } = require('console');
 app.use(cors());
 app.use(express.json()); // Middleware to parse JSON bodies
 
-
-
 MYSQL_USER = 'erp_eha'
     MYSQL_PASSWORD = 'EhaERP@12345'
     MYSQL_HOST = '147.93.29.200'
@@ -508,6 +506,42 @@ app.post('/verify-email', (req, res) => {
           } else {
             res.status(404).json({ success: false, message: 'User not found' });
           }
+        });
+    });
+
+
+    app.get('/paymentSummary', async(req,res) => {
+            
+      const { startdateparam, enddateparam, intervals, groupby, filterby, filtervalue } = req.query;
+
+  //console.log(req.query);
+
+  const sql = `CALL GetPaymentSummary(?,?,?,?,?,?)`;
+  const params = [startdateparam, enddateparam, intervals, groupby, filterby, filtervalue];
+
+  //console.log("SQL params:", params);
+        // Execute the query
+      connection.query(sql, params ,(error, results) => {
+          
+        if (error) {
+            console.error('Error executing query: ' + error);
+            //return res.status(500).json(error: error.message, stack: error.stack );
+             return res.status(500).json({ error: error.message, stack: error.stack });
+          }
+
+          console.log('Data retrieved:', results);
+          res.json(results[0]);
+          //res.send(results); // 'results' contains the retrieved rows
+          
+          // Close the connection
+          // connection.end((err) => {
+          //     if (err) {
+          //         console.error('Error closing the connection: ' + err.stack);
+          //         return;
+          //     }
+          //     console.log('Connection closed.');
+          // });
+          //});
         });
     });
 
