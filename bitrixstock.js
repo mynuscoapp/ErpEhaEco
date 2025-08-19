@@ -53,7 +53,7 @@ MYSQL_USER = 'erp_eha'
     //         });
     //     });
     // });
-
+    
     const server = require('http').createServer(app);
     const io = require('socket.io')(server, {
     cors: {
@@ -448,68 +448,378 @@ MYSQL_USER = 'erp_eha'
         console.log(`Express server listening at https://localhost:${port}`);
       });
 
-      // Add this code after your other endpoints
 
-      app.post('/login', (req, res) => {
-        const { email, password } = req.body;
-        if (connection.state === 'disconnected') {
-          connection.connect();
-        }
-        // Check if user exists with given email and password
-        const sql = 'SELECT Email, Role FROM pulse_users WHERE Email = ? AND password = ? LIMIT 1';
-        connection.query(sql, [email, password], (err, results) => {
-          if (err) {
-            console.error('Error during login:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
-          if (results.length === 0) {
-            // No user found or wrong password
-            return res.status(401).json({ error: 'Invalid email or password' });
-          }
-          // Login successful
-          res.json({
-            message: 'Login successful',
-            success: true,
-            user: {
-              email: results[0].Email,
-              role: results[0].Role,
-            }
-          });
-        });
-      });
 
-app.post('/verify-email', (req, res) => {
-  const { email } = req.body;
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
 
-  const sql = 'SELECT * FROM pulse_users WHERE Email = ? LIMIT 1';
-  connection.query(sql, [email], (err, results) => {
+  if (connection.state === 'disconnected') {
+    connection.connect();
+  }
+
+  const sql = 'SELECT Email, password, allowlogin FROM pulse_users WHERE Email = ? LIMIT 1';
+  connection.query(sql, [email], async (err, results) => {
     if (err) {
-      console.error('Email verification error:', err);
+      console.error('Error during login:', err);
       return res.status(500).json({ error: 'Database error' });
     }
-    if (results.length > 0) {
-      res.json({ exists: true, userId: results[0].ID });
-    } else {
-      res.json({ exists: false });
+    if (results.length === 0) {
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
+
+    const user = results[0];
+
+    if (user.allowlogin === 0 || user.allowlogin === false) {
+      return res.status(403).json({ error: 'Access denied. Login not allowed for this user.' });
+    }
+
+    // ✅ Use bcrypt to compare hashed password
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    res.json({
+      message: 'Login successful',
+      success: true,
+      user: {
+        email: user.Email
+      }
+    });
+  });
+});
+// Note: The login endpoint is now using bcrypt to compare the password securely.
+
+      // Add this code after your other endpoints
+
+      // app.post('/login', (req, res) => {
+      //   const { email, password } = req.body;
+      //   if (connection.state === 'disconnected') {
+      //     connection.connect();
+      //   }
+      //   // Check if user exists with given email and password
+      //   const sql = 'SELECT Email, allowlogin FROM pulse_users WHERE Email = ? AND password = ? LIMIT 1';
+      //   connection.query(sql, [email, password], (err, results) => {
+      //     if (err) {
+      //       console.error('Error during login:', err);
+      //       return res.status(500).json({ error: 'Database error' });
+      //     }
+      //     if (results.length === 0) {
+      //       // No user found or wrong password
+      //       return res.status(401).json({ error: 'Invalid email or password' });
+      //     }
+
+      //     const user = results[0];
+
+      //     if (user.allowlogin === 0 || user.allowlogin === false) { 
+      //       return res.status(403).json({ error: 'Access denied. Login not allowed for this user.' });
+      //     }
+      //     // Login successful
+      //     res.json({
+      //       message: 'Login successful',
+      //       success: true,
+      //       user: {
+      //         email: user.Email,
+              
+      //       }
+      //     });
+      //   });
+      // });
+
+// app.post('/verify-email', (req, res) => {
+//   const { email } = req.body;
+
+//   const sql = 'SELECT * FROM pulse_users WHERE Email = ? LIMIT 1';
+//   connection.query(sql, [email], (err, results) => {
+//     if (err) {
+//       console.error('Email verification error:', err);
+//       return res.status(500).json({ error: 'Database error' });
+//     }
+//     if (results.length > 0) {
+//       res.json({ exists: true, userId: results[0].ID });
+//     } else {
+//       res.json({ exists: false });
+//     }
+//   });
+// });
+    app.post('/verify-email', (req, res) => {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+
+      const sql = 'SELECT * FROM pulse_users WHERE Email = ? LIMIT 1';
+      connection.query(sql, [email], (err, results) => {
+        if (err) {
+          console.error('Email verification error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        if (results.length > 0) {
+          res.json({ exists: true, userId: results[0].ID });
+        } else {
+          res.json({ exists: false });
+        }
+      });
+    });
+
+
+
+
+    //   app.post('/reset-password', (req, res) => {
+    //     const { email, newPassword } = req.body;
+    //     const sql = 'UPDATE pulse_users SET PASSWORD = ? WHERE Email = ?';
+    //     connection.query(sql, [newPassword, email], (err, result) => {
+    //       if (err) {
+    //         console.error('Error resetting password:', err);
+    //         return res.status(500).json({ error: 'Database error' });
+    //       }
+    //       if (result.affectedRows > 0) {
+    //         res.json({ success: true, message: 'Password updated successfully' });
+    //       } else {
+    //         res.status(404).json({ success: false, message: 'User not found' });
+    //       }
+    //     });
+    // });
+
+const nodemailer = require('nodemailer');
+const bcrypt = require('bcrypt');
+
+// Configure your email transporter
+const transporter = nodemailer.createTransport({
+  host: "business22.web-hosting.com", // ✅ use this
+  port: 465,                             // SSL
+  secure: true,                          // upgrade later with STARTTLS
+  debug: true,                           // show debug output
+  logger: true,                          // true for 465, false for 587
+  auth: {
+    user: "noreply@mynusco.com",         // full email
+    pass: "Srinath@!@#$"                 // email password
+  }
+});
+// const transporter = nodemailer.createTransport({
+//   service: 'smtp.mynusco.com',
+//   auth: {
+//     user: 'noreply@mynusco.com',
+//     pass: 'Srinath@!@#$'
+//   }
+// });
+
+// 1. Request password reset
+app.post('/forgot-password', (req, res) => {
+  const { email } = req.body;
+  console.log('Received forgot-password request for:', email);
+  const sqlCheck = 'SELECT * FROM pulse_users WHERE Email = ? LIMIT 1';
+  connection.query(sqlCheck, [email], (err, results) => {
+    if (err) {
+      console.error('DB error in email check:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    if (results.length === 0) {
+      console.log('Email not found:', email);
+      return res.status(404).json({ error: 'Email not found' });
+    }
+
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiryTime = new Date(Date.now() + 15 * 60 * 1000);
+
+    const sqlUpdate = 'UPDATE pulse_users SET reset_code = ?, reset_code_expiry = ? WHERE Email = ?';
+    connection.query(sqlUpdate, [resetCode, expiryTime, email], (err2) => {
+      if (err2) {
+        console.error('DB error updating reset code:', err2);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      const mailOptions = {
+        from: 'noreply@mynusco.com',
+        to: email,
+        subject: 'Your Password Reset Code',
+        html: `<p>Your password reset code is: <b>${resetCode}</b></p><p>This code will expire in 15 minutes.</p>`
+      };
+
+      transporter.sendMail(mailOptions, (error) => {
+        if (error) {
+          console.error('Error sending email:', error);
+          return res.status(500).json({ error: 'Failed to send email' });
+        }
+        console.log('Reset code sent to:', email);
+        res.json({ message: 'Reset code sent to your email' });
+      });
+    });
   });
 });
 
-      app.post('/reset-password', (req, res) => {
-        const { email, newPassword } = req.body;
-        const sql = 'UPDATE pulse_users SET PASSWORD = ? WHERE Email = ?';
-        connection.query(sql, [newPassword, email], (err, result) => {
-          if (err) {
-            console.error('Error resetting password:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
-          if (result.affectedRows > 0) {
-            res.json({ success: true, message: 'Password updated successfully' });
-          } else {
-            res.status(404).json({ success: false, message: 'User not found' });
-          }
-        });
+
+// 2. Verify reset code
+app.post('/verify-reset-code', (req, res) => {
+  const { email, resetCode } = req.body;
+  console.log("Incoming verify request:", { email, resetCode });
+
+  const sql = 'SELECT reset_code_expiry, reset_code FROM pulse_users WHERE Email = ? LIMIT 1';
+  connection.query(sql, [email], (err, results) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (results.length === 0) return res.status(400).json({ error: 'Email not found' });
+
+    console.log("DB row:", results[0]);
+
+    if (results[0].reset_code !== resetCode) {
+      return res.status(400).json({ error: 'Invalid reset code' });
+    }
+    if (new Date() > new Date(results[0].reset_code_expiry)) {
+      return res.status(400).json({ error: 'Code expired' });
+    }
+
+    res.json({ success: true, message: 'Code verified' });
+  });
+});
+
+
+// 3. Reset password
+app.post('/reset-password', async (req, res) => {
+  try {
+    const { email, resetCode, newPassword } = req.body;
+    if (!email || !resetCode || !newPassword) {
+      return res.status(400).json({ error: 'Email, reset code, and new password are required' });
+    }
+
+    // Promisify query to use async/await
+    const query = (sql, params) => new Promise((resolve, reject) => {
+      connection.query(sql, params, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
     });
+
+    // 1️⃣ Check if reset code exists and is valid
+    const selectSql = 'SELECT reset_code_expiry FROM pulse_users WHERE Email = ? AND reset_code = ? LIMIT 1';
+    const results = await query(selectSql, [email, resetCode]);
+
+    if (results.length === 0) {
+      return res.status(400).json({ error: 'Invalid reset code or email' });
+    }
+
+    const expiry = results[0].reset_code_expiry;
+    if (new Date() > new Date(expiry)) {
+      return res.status(400).json({ error: 'Reset code expired' });
+    }
+
+    // 2️⃣ Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 3️⃣ Update password in DB
+    const updateSql = 'UPDATE pulse_users SET PASSWORD = ?, reset_code = NULL, reset_code_expiry = NULL WHERE Email = ?';
+    const updateResult = await query(updateSql, [hashedPassword, email]);
+
+    if (updateResult.affectedRows > 0) {
+      return res.json({ success: true, message: 'Password updated successfully' });
+    } else {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+  } catch (err) {
+    console.error('Reset password error:', err);  // <-- full error logging
+    return res.status(500).json({ error: 'Internal server error', details: err.message });
+  }
+});
+// app.post('/reset-password', async (req, res) => {
+//   const { email, resetCode, newPassword } = req.body;
+//   if (!email || !resetCode || !newPassword) {
+//     return res.status(400).json({ error: 'Email, reset code, and new password are required' });
+//   }
+
+//   const sqlSelect = 'SELECT reset_code_expiry FROM pulse_users WHERE Email = ? AND reset_code = ? LIMIT 1';
+//   connection.query(sqlSelect, [email, resetCode], async (err, results) => {
+//     if (err) return res.status(500).json({ error: 'Database error' });
+//     if (results.length === 0) return res.status(400).json({ error: 'Invalid reset code or email' });
+
+//     const expiry = results[0].reset_code_expiry;
+//     if (new Date() > new Date(expiry)) return res.status(400).json({ error: 'Reset code expired' });
+
+//     try {
+//       const hashedPassword = await bcrypt.hash(newPassword, 10);
+//       const sqlUpdate = 'UPDATE pulse_users SET PASSWORD = ?, reset_code = NULL, reset_code_expiry = NULL WHERE Email = ?';
+//       connection.query(sqlUpdate, [hashedPassword, email], (err2, result) => {
+//         if (err2) return res.status(500).json({ error: 'Database error' });
+//         if (result.affectedRows > 0) {
+//           res.json({ success: true, message: 'Password updated successfully' });
+//         } else {
+//           res.status(404).json({ error: 'User not found' });
+//         }
+//       });
+//     } catch (hashErr) {
+//       return res.status(500).json({ error: 'Error updating password' });
+//     }
+//   });
+// });
+
+// app.post('/verify-reset-code', (req, res) => {
+//   const { email, resetCode } = req.body;
+
+//   const sql = 'SELECT reset_code_expiry FROM pulse_users WHERE Email = ? AND reset_code = ? LIMIT 1';
+//   connection.query(sql, [email, resetCode], (err, results) => {
+//     if (err) {
+//       console.error('Database error:', err);
+//       return res.status(500).json({ error: 'Database error' });
+//     }
+//     if (results.length === 0) {
+//       return res.status(400).json({ error: 'Invalid code or email' });
+//     }
+
+//     const expiry = results[0].reset_code_expiry;
+//     if (new Date() > new Date(expiry)) {
+//       return res.status(400).json({ error: 'Code expired' });
+//     }
+
+//     res.json({ success: true, message: 'Code verified' });
+//   });
+// });
+
+
+// const bcrypt = require('bcrypt');
+
+// app.post('/reset-password', async (req, res) => {
+//   const { email, resetCode, newPassword } = req.body;
+
+//   if (!email || !resetCode || !newPassword) {
+//     return res.status(400).json({ error: 'Email, reset code, and new password are required' });
+//   }
+
+//   // Check if code matches and not expired
+//   const sqlSelect = 'SELECT reset_code_expiry FROM pulse_users WHERE Email = ? AND reset_code = ? LIMIT 1';
+//   connection.query(sqlSelect, [email, resetCode], async (err, results) => {
+//     if (err) {
+//       console.error('DB error:', err);
+//       return res.status(500).json({ error: 'Database error' });
+//     }
+//     if (results.length === 0) {
+//       return res.status(400).json({ error: 'Invalid reset code or email' });
+//     }
+
+//     const expiry = results[0].reset_code_expiry;
+//     if (new Date() > new Date(expiry)) {
+//       return res.status(400).json({ error: 'Reset code expired' });
+//     }
+
+//     try {
+//       const hashedPassword = await bcrypt.hash(newPassword, 10);
+//       const sqlUpdate = 'UPDATE pulse_users SET password = ?, reset_code = NULL, reset_code_expiry = NULL WHERE Email = ?';
+//       connection.query(sqlUpdate, [hashedPassword, email], (err2, result) => {
+//         if (err2) {
+//           console.error('DB error:', err2);
+//           return res.status(500).json({ error: 'Database error' });
+//         }
+//         if (result.affectedRows > 0) {
+//           res.json({ success: true, message: 'Password updated successfully' });
+//         } else {
+//           res.status(404).json({ error: 'User not found' });
+//         }
+//       });
+//     } catch (hashErr) {
+//       console.error('Hashing error:', hashErr);
+//       return res.status(500).json({ error: 'Error updating password' });
+//     }
+//   });
+// });
 
 
     //   app.use(function (req, res, next) {
