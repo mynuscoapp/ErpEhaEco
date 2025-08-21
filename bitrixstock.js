@@ -73,13 +73,13 @@ const connection = mysql.createConnection({
     //     });
     // });
     
-    const server = require('http').createServer(app);
-    const io = require('socket.io')(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-        }
-    });
+    // const server = require('http').createServer(app);
+    // const io = require('socket.io')(server, {
+    // cors: {
+    //     origin: "*",
+    //     methods: ["GET", "POST"]
+    //     }
+    // });
     
     app.get('/bitrixstock', (req, res) => {
         // connection.connect((err) => {
