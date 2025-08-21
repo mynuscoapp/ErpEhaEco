@@ -17,9 +17,16 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: true
 }));
+app.use(express.json({ limit: '10mb' }));
+
+
+
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 const multer = require('multer');
-        const upload = multer({ dest: './amazon-file-upload' }); 
+const upload = multer({ dest: './amazon-file-upload', limits: { fileSize: 1 * 1000 * 1000 * 1000 /* bytes */ } }); 
+
+
 
 MYSQL_USER = 'erp_eha'
 MYSQL_PASSWORD = 'EhaERP@12345'
@@ -70,7 +77,9 @@ const server = require('http').createServer(app);
 const io = require('socket.io')(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
+    methods: ["PUT","GET","POST","DELETE"],
+    responseHeader: ["Content-Type"],
+    maxAgeSeconds: 3600
   }
 });
 
@@ -516,6 +525,8 @@ app.post('/reset-password', (req, res) => {
 });
 
 app.post('/amazonpaymentsupload', upload.array("AznPaymentsUpload",10), (req, res) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  
   if (!req.files || req.files.length === 0) {
     res.json({
       'message': 'No files Uploaded'
