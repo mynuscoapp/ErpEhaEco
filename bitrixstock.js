@@ -463,8 +463,8 @@ app.post('/login', async (req, res) => {
     connection.connect();
   }
 
-  const sql = 'SELECT Email, password, allowlogin FROM pulse_users WHERE Email = ? LIMIT 1';
-  connection.query(sql, [email], async (err, results) => {
+ const sql = 'SELECT ID, Email, password, allowlogin, Role FROM pulse_users WHERE Email = ? LIMIT 1';
+connection.query(sql, [email], async (err, results) => {
     if (err) {
       console.error('Error during login:', err);
       return res.status(500).json({ error: 'Database error' });
@@ -478,9 +478,15 @@ app.post('/login', async (req, res) => {
     if (user.allowlogin === 0 || user.allowlogin === false) {
       return res.status(403).json({ error: 'Access denied. Login not allowed for this user.' });
     }
+// Debugging logs
+console.log("Entered email:", email);
+console.log("Entered password:", password);
+console.log("DB record:", user);
+
 
     // ✅ Use bcrypt to compare hashed password
-    const passwordMatch = await bcrypt.compare(password, user.password);
+  const passwordMatch = await bcrypt.compare(password, user.password);
+  console.log("Password match result:", passwordMatch);
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
@@ -489,7 +495,9 @@ app.post('/login', async (req, res) => {
       message: 'Login successful',
       success: true,
       user: {
-        email: user.Email
+        email: user.Email,
+        role: user.Role,
+        id: user.ID
       }
     });
   });
@@ -726,6 +734,42 @@ app.post('/reset-password', async (req, res) => {
     return res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
+
+// Get permissions for a given user
+app.get('/api/user-permissions/:id', (req, res) => {
+  const userId = req.params.id; // pulse_users.ID
+
+  // Step 1: Fetch user role
+  const userQuery = 'SELECT Role FROM pulse_users WHERE ID = ?';
+  connection.query(userQuery, [userId], (err, userResult) => {
+    if (err) {
+      console.error('Error fetching user role:', err);
+      return res.status(500).json({ message: 'Error fetching user role' });
+    }
+
+    if (userResult.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const role = userResult[0].Role;
+
+    // Step 2: Fetch permissions for that role
+    const permQuery = 'SELECT menu_label, route_path FROM role_permissions WHERE role_name = ?';
+    connection.query(permQuery, [role], (err, permResult) => {
+      if (err) {
+        console.error('Error fetching permissions:', err);
+        return res.status(500).json({ message: 'Error fetching permissions' });
+      }
+
+      res.json({
+        role: role,
+        permissions: permResult
+      });
+    });
+  });
+});
+
+
 // app.post('/reset-password', async (req, res) => {
 //   const { email, resetCode, newPassword } = req.body;
 //   if (!email || !resetCode || !newPassword) {
