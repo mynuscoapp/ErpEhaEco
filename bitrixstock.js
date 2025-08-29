@@ -626,7 +626,7 @@ app.post('/forgot-password', (req, res) => {
   connection.query(sqlCheck, [email], (err, results) => {
     if (err) {
       console.error('DB error in email check:', err);
-      return res.status(500).json({ error: 'Database error' });
+      return res.status(500).json({ error: 'Database error' + err });
     }
     if (results.length === 0) {
       console.log('Email not found:', email);
@@ -640,7 +640,7 @@ app.post('/forgot-password', (req, res) => {
     connection.query(sqlUpdate, [resetCode, expiryTime, email], (err2) => {
       if (err2) {
         console.error('DB error updating reset code:', err2);
-        return res.status(500).json({ error: 'Database error' });
+        return res.status(500).json({ error: 'Database error' + err2 });
       }
 
       const mailOptions = {
@@ -653,7 +653,7 @@ app.post('/forgot-password', (req, res) => {
       transporter.sendMail(mailOptions, (error) => {
         if (error) {
           console.error('Error sending email:', error);
-          return res.status(500).json({ error: 'Failed to send email' });
+          return res.status(500).json({ error: 'Failed to send email' + error });
         }
         console.log('Reset code sent to:', email);
         res.json({ message: 'Reset code sent to your email' });
