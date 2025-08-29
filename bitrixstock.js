@@ -17,9 +17,16 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: true
 }));
+app.use(express.json({ limit: '10mb' }));
+
+
+
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 const multer = require('multer');
-        const upload = multer({ dest: './amazon-file-upload' }); 
+const upload = multer({ dest: './amazon-file-upload', limits: { fileSize: 1 * 1000 * 1000 * 1000 /* bytes */ } }); 
+
+
 
 MYSQL_USER = 'erp_eha'
 MYSQL_PASSWORD = 'EhaERP@12345'
@@ -66,13 +73,13 @@ const connection = mysql.createConnection({
     //     });
     // });
     
-    const server = require('http').createServer(app);
-    const io = require('socket.io')(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-        }
-    });
+    // const server = require('http').createServer(app);
+    // const io = require('socket.io')(server, {
+    // cors: {
+    //     origin: "*",
+    //     methods: ["GET", "POST"]
+    //     }
+    // });
     
     app.get('/bitrixstock', (req, res) => {
         // connection.connect((err) => {
@@ -112,6 +119,64 @@ const connection = mysql.createConnection({
             //});
         });
       });
+//         // Close the connection
+//         connection.end((err) => {
+//             if (err) {
+//                 console.error('Error closing the connection: ' + err.stack);
+//                 return;
+//             }
+//             console.log('Connection closed.');
+//         });
+//     });
+// });
+
+const server = require('http').createServer(app);
+const io = require('socket.io')(server, {
+  cors: {
+    origin: "*",
+    methods: ["PUT","GET","POST","DELETE"],
+    responseHeader: ["Content-Type"],
+    maxAgeSeconds: 3600
+  }
+});
+
+app.get('/bitrixstock', (req, res) => {
+  // connection.connect((err) => {
+  //     if (err) {
+  //         console.error('Error connecting to the database: ' + err.stack);
+  //         return;
+  //     }
+  res.header("Access-Control-Allow-Origin", "*");
+  console.log('Connected to MySQL database as id ' + connection.threadId);
+  if (!connection._connectCalled) {
+    connection.connect();
+  }
+  // SQL query to retrieve data
+  const sql = 'SELECT bs.id, s.storeId, bs.storeid as id_of_store, bp.NAME as productName, bp.preview_picture, bs.quantity, bs.quantityReserved FROM bitrix_store_stock_availablity bs ' +
+    ' inner join bitrix_products bp ON bs.productId = bp.id ' +
+    ' LEFT JOIN  store s ON bs.storeId = s.id' +
+    ' WHERE bp.ACTIVE = "Y"';
+
+  // Execute the query
+  connection.query(sql, (error, results, fields) => {
+    if (error) {
+      console.error('Error executing query: ' + error.stack);
+      return;
+    }
+    console.log('Data retrieved:');
+    res.send(results); // 'results' contains the retrieved rows
+
+    // Close the connection
+    // connection.end((err) => {
+    //     if (err) {
+    //         console.error('Error closing the connection: ' + err.stack);
+    //         return;
+    //     }
+    //     console.log('Connection closed.');
+    // });
+    //});
+  });
+});
 
 app.get('/overallstock', (req, res) => {
   // connection.connect((err) => {
@@ -869,6 +934,80 @@ app.get('/api/user-permissions/:id', (req, res) => {
 //     }
 //   });
 // });
+app.post('/amazonpaymentsupload', upload.array("AznPaymentsUpload",10), (req, res) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  
+  if (!req.files || req.files.length === 0) {
+    res.json({
+      'message': 'No files Uploaded'
+    });
+    return;
+  }
+    req.files.forEach(file => {
+      console.log(`File uploaded: ${file.filename}, Path: ${file.path}`);
+      const csvFilePath = `${file.path}`;
+      const records = [];
+
+      fs.createReadStream(csvFilePath)
+        .pipe(parse({ columns: true, skip_empty_lines: true })) // `columns: true` for header row mapping
+        .on('data', (data) => records.push(data))
+        .on('end', () => {
+          console.log('CSV data parsed:', records);
+          // Proceed to insert/update the database
+          AznPaymentsImport(records);
+          fs.unlinkSync(csvFilePath);
+          res.json({
+            'message': 'File uploaded successfully'
+          });
+        })
+        .on('error', (err) => {
+          console.error('Error parsing CSV:', err);
+          res.json({
+            'message': 'Error parsing CSV' + err
+          });
+          return;
+        });
+
+      // Perform operations with each file, e.g., save to database, process
+    });
+
+  
+});
+
+    app.get('/paymentSummary', async(req,res) => {
+            
+      const { startdateparam, enddateparam, intervals, groupby, filterby, filtervalue } = req.query;
+
+  //console.log(req.query);
+
+  const sql = `CALL GetPaymentSummary(?,?,?,?,?,?)`;
+  const params = [startdateparam, enddateparam, intervals, groupby, filterby, filtervalue];
+
+  //console.log("SQL params:", params);
+        // Execute the query
+      connection.query(sql, params ,(error, results) => {
+          
+        if (error) {
+            console.error('Error executing query: ' + error);
+            //return res.status(500).json(error: error.message, stack: error.stack );
+             return res.status(500).json({ error: error.message, stack: error.stack });
+          }
+
+          console.log('Data retrieved:', results);
+          res.json(results[0]);
+          //res.send(results); // 'results' contains the retrieved rows
+          
+          // Close the connection
+          // connection.end((err) => {
+          //     if (err) {
+          //         console.error('Error closing the connection: ' + err.stack);
+          //         return;
+          //     }
+          //     console.log('Connection closed.');
+          // });
+          //});
+        });
+    });
 
 
     //   app.use(function (req, res, next) {
@@ -891,4 +1030,74 @@ app.get('/api/user-permissions/:id', (req, res) => {
     //     next();
     // });
 
+    function AznPaymentsImport(records) {
+      records.forEach(record => {
+        const query = `INSERT INTO azn_payments (date, settlement_id, type, order_id, Sku, description, quantity, marketplace, account_type, fulfillment, order_city, order_state, order_postal, product_sales, shipping_credits, gift_wrap_credits, promotional_rebates, tax_liable, TCS_CGST, TCS_SGST, TCS_IGST, TDS, selling_fees, fba_fees, other_fees, other, total, last_updated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
+    date = VALUES(date),
+    settlement_id = VALUES(settlement_id),
+    type = VALUES(type),
+    order_id = VALUES(order_id),
+    Sku = VALUES(Sku),
+    description = VALUES(description),
+    quantity = IF(VALUES(quantity) > 0, VALUES(quantity), 0),
+    marketplace = VALUES(marketplace),
+    account_type = VALUES(account_type),
+    fulfillment = VALUES(fulfillment),
+    order_city = VALUES(order_city),
+    order_state = VALUES(order_state),
+    order_postal = VALUES(order_postal),
+    product_sales = VALUES(product_sales),
+    shipping_credits = VALUES(shipping_credits),
+    gift_wrap_credits = VALUES(gift_wrap_credits),
+    promotional_rebates = VALUES(promotional_rebates),
+    tax_liable = VALUES(tax_liable),
+    TCS_CGST = VALUES(TCS_CGST),
+    TCS_SGST = VALUES(TCS_SGST),
+    TCS_IGST = VALUES(TCS_IGST),
+    TDS = VALUES(TDS),
+    selling_fees = VALUES(selling_fees),
+    fba_fees = VALUES(fba_fees),
+    other_fees = VALUES(other_fees),
+    other = VALUES(other),
+    total = VALUES(total),
+    last_updated = VALUES(last_updated);`;
+        const values = [record.date,
+        record.settlement_id,
+        record.type,
+        record.order_id,
+        record.Sku,
+        record.description,
+        record.quantity == '' ? 0 : record.quantity, 
+        record.marketplace,
+        record.account_type,
+        record.fulfillment,
+        record.order_city,
+        record.order_state,
+        record.order_postal,
+        record.product_sales,
+        record.shipping_credits,
+        record.gift_wrap_credits,
+        record.promotional_rebates,
+        record.tax_liable,
+        record.TCS_CGST,
+        record.TCS_SGST,
+        record.TCS_IGST,
+        record.TDS,
+        record.selling_fees,
+        record.fba_fees,
+        record.other_fees,
+        record.other,
+        record.total,
+        record.last_updated
+        ]; // Map CSV columns to DB columns
     
+        connection.query(query, values, (err, result) => {
+          if (err) {
+            console.error('Error inserting/updating record:', err);
+            return;
+          }
+          console.log('Record processed:', result);
+        });
+      });
+    }
