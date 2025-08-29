@@ -898,7 +898,7 @@ app.post('/reset-password', async (req, res) => {
     return res.send([]); // nothing selected
   }
   const sql = `SELECT DISTINCT ${column} AS value FROM sku_info`;
-
+  console.log("Executing SQL:", sql);
   connection.query(sql, (err, results) => {
     if (err) return res.status(500).send(err);
     //res.json(results.map(r => r.value));
