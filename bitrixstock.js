@@ -1022,3 +1022,44 @@ function AznPaymentsImport(records) {
         });
       });
     }
+
+    app.post('/amazonpaymentsupload', upload.array("AznPaymentsUpload",10), (req, res) => {
+      res.header("Access-Control-Allow-Origin", "*");
+      
+      if (!req.files || req.files.length === 0) {
+        res.json({
+          'message': 'No files Uploaded'
+        });
+        return;
+      }
+        req.files.forEach(file => {
+          console.log(`File uploaded: ${file.filename}, Path: ${file.path}`);
+          const csvFilePath = `${file.path}`;
+          const records = [];
+    
+          fs.createReadStream(csvFilePath)
+            .pipe(parse({ columns: true, skip_empty_lines: true })) // `columns: true` for header row mapping
+            .on('data', (data) => records.push(data))
+            .on('end', () => {
+              console.log('CSV data parsed:', records);
+              // Proceed to insert/update the database
+              AznPaymentsImport(records);
+              fs.unlinkSync(csvFilePath);
+              res.json({
+                'message': 'File uploaded successfully'
+              });
+            })
+            .on('error', (err) => {
+              console.error('Error parsing CSV:', err);
+              res.json({
+                'message': 'Error parsing CSV' + err
+              });
+              return;
+            });
+    
+          // Perform operations with each file, e.g., save to database, process
+        });
+    
+      
+    });
+    
