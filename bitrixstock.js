@@ -57,7 +57,7 @@ const connection = mysql.createConnection({
 
     //         // Close the connection
     //         connection.end((err) => {
-    //             if (err) {
+    //             if (err) {S
     //                 console.error('Error closing the connection: ' + err.stack);
     //                 return;
     //             }
@@ -890,23 +890,23 @@ app.get('/api/user-permissions/:id', (req, res) => {
     //     // Pass to next layer of middleware
     //     next();
     // });
-    app.get('/paymentSummary', (req,res) => {
+    app.get('/paymentSummary', async(req,res) => {
             
       const { startdateparam, enddateparam, intervals, groupby, filterby, filtervalue } = req.query;
 
-  //console.log(req.query);
+  console.log(req.query);
 
   const sql = `CALL GetPaymentSummary(?,?,?,?,?,?)`;
   const params = [
-    startdateparam,
-    enddateparam,
-    intervals,
-    groupby || null,
-    filterby || null,
-    filtervalue || null
+    startdateparam || '',
+    enddateparam || '',
+    intervals || '',
+    groupby || " ",
+    filterby || " ",
+    filtervalue || " "
   ];
 
-  //console.log("SQL params:", params);
+  console.log("SQL params:", params);
         // Execute the query
       connection.query(sql, params ,(error, results) => {
           
@@ -916,10 +916,9 @@ app.get('/api/user-permissions/:id', (req, res) => {
              return res.status(500).json({ error: error.message, stack: error.stack });
           }
 
-          //console.log('Data retrieved:', results);
+          console.log('Data retrieved:', results);
           res.json(results[0]);
           //res.send(results); // 'results' contains the retrieved rows
-          
         });
     });
 
@@ -951,3 +950,75 @@ app.get('/api/user-permissions/:id', (req, res) => {
    //res.send(values);
   });
 });
+
+function AznPaymentsImport(records) {
+      records.forEach(record => {
+        const query = `INSERT INTO azn_payments (date, settlement_id, type, order_id, Sku, description, quantity, marketplace, account_type, fulfillment, order_city, order_state, order_postal, product_sales, shipping_credits, gift_wrap_credits, promotional_rebates, tax_liable, TCS_CGST, TCS_SGST, TCS_IGST, TDS, selling_fees, fba_fees, other_fees, other, total, last_updated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
+    date = VALUES(date),
+    settlement_id = VALUES(settlement_id),
+    type = VALUES(type),
+    order_id = VALUES(order_id),
+    Sku = VALUES(Sku),
+    description = VALUES(description),
+    quantity = IF(VALUES(quantity) > 0, VALUES(quantity), 0),
+    marketplace = VALUES(marketplace),
+    account_type = VALUES(account_type),
+    fulfillment = VALUES(fulfillment),
+    order_city = VALUES(order_city),
+    order_state = VALUES(order_state),
+    order_postal = VALUES(order_postal),
+    product_sales = VALUES(product_sales),
+    shipping_credits = VALUES(shipping_credits),
+    gift_wrap_credits = VALUES(gift_wrap_credits),
+    promotional_rebates = VALUES(promotional_rebates),
+    tax_liable = VALUES(tax_liable),
+    TCS_CGST = VALUES(TCS_CGST),
+    TCS_SGST = VALUES(TCS_SGST),
+    TCS_IGST = VALUES(TCS_IGST),
+    TDS = VALUES(TDS),
+    selling_fees = VALUES(selling_fees),
+    fba_fees = VALUES(fba_fees),
+    other_fees = VALUES(other_fees),
+    other = VALUES(other),
+    total = VALUES(total),
+    last_updated = VALUES(last_updated);`;
+        const values = [record.date,
+        record.settlement_id,
+        record.type,
+        record.order_id,
+        record.Sku,
+        record.description,
+        record.quantity == '' ? 0 : record.quantity, 
+        record.marketplace,
+        record.account_type,
+        record.fulfillment,
+        record.order_city,
+        record.order_state,
+        record.order_postal,
+        record.product_sales,
+        record.shipping_credits,
+        record.gift_wrap_credits,
+        record.promotional_rebates,
+        record.tax_liable,
+        record.TCS_CGST,
+        record.TCS_SGST,
+        record.TCS_IGST,
+        record.TDS,
+        record.selling_fees,
+        record.fba_fees,
+        record.other_fees,
+        record.other,
+        record.total,
+        record.last_updated
+        ]; // Map CSV columns to DB columns
+    
+        connection.query(query, values, (err, result) => {
+          if (err) {
+            console.error('Error inserting/updating record:', err);
+            return;
+          }
+          console.log('Record processed:', result);
+        });
+      });
+    }
