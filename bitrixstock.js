@@ -898,15 +898,15 @@ app.get('/api/user-permissions/:id', (req, res) => {
 
   const sql = `CALL GetPaymentSummary(?,?,?,?,?,?)`;
   const params = [
-    startdateparam || '',
-    enddateparam || '',
-    intervals || '',
+    startdateparam || "",
+    enddateparam || "",
+    intervals || "",
     groupby || " ",
     filterby || " ",
     filtervalue || " "
   ];
 
-  console.log("SQL params:", params);
+  //console.log("SQL params:", params);
         // Execute the query
       connection.query(sql, params ,(error, results) => {
           
@@ -916,7 +916,7 @@ app.get('/api/user-permissions/:id', (req, res) => {
              return res.status(500).json({ error: error.message, stack: error.stack });
           }
 
-          console.log('Data retrieved:', results);
+          //console.log('Data retrieved:', results);
           res.json(results[0]);
           //res.send(results); // 'results' contains the retrieved rows
         });
