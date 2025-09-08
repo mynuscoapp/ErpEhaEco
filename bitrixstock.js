@@ -87,10 +87,33 @@ const connection = mysql.createConnection({
               connection.connect();
               }
             // SQL query to retrieve data
-            const sql = 'SELECT bs.id, s.storeId, bs.storeid as id_of_store, bp.NAME as productName, bp.preview_picture, bs.quantity, bs.quantityReserved FROM bitrix_store_stock_availablity bs ' +
-                ' inner join bitrix_products bp ON bs.productId = bp.id ' +
-                ' LEFT JOIN  store s ON bs.storeId = s.id' +
-                ' WHERE bp.ACTIVE = "Y"' ;
+            // const sql = 'SELECT bs.id, s.storeId, bs.storeid as id_of_store, bp.NAME as productName, bp.preview_picture, bs.quantity, bs.quantityReserved FROM bitrix_store_stock_availablity bs ' +
+            //     ' inner join bitrix_products bp ON bs.productId = bp.id ' +
+            //     ' LEFT JOIN  store s ON bs.storeId = s.id' +
+            //     ' WHERE bp.ACTIVE = "Y"' ;
+
+            const sql = `
+  SELECT 
+    bs.id, 
+    ppv.value AS SKU,
+    s.storeId, 
+    bs.storeid AS id_of_store,
+    bp.NAME AS productName, 
+    bp.preview_picture, 
+    bs.quantity, 
+    bs.quantityReserved
+  FROM bitrix_store_stock_availablity bs
+  INNER JOIN bitrix_products bp 
+         ON bs.productId = bp.id
+  LEFT JOIN store s 
+         ON bs.storeId = s.id
+  LEFT JOIN product_property_value ppv 
+         ON ppv.productid = bs.id   -- ✅ use bp.id not bs.id
+  WHERE bp.ACTIVE = 'Y' 
+    AND s.status = 'Yes' 
+    AND ppv.Propertyid = 100
+`;
+
     
             // Execute the query
             connection.query(sql, (error, results, fields) => {
@@ -597,6 +620,7 @@ console.log("DB record:", user);
 
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
+const { map } = require('jquery');
 
 // Configure your email transporter
 const transporter = nodemailer.createTransport({
@@ -1023,43 +1047,37 @@ function AznPaymentsImport(records) {
       });
     }
 
-    app.post('/amazonpaymentsupload', upload.array("AznPaymentsUpload",10), (req, res) => {
-      res.header("Access-Control-Allow-Origin", "*");
-      
-      if (!req.files || req.files.length === 0) {
-        res.json({
-          'message': 'No files Uploaded'
-        });
-        return;
-      }
-        req.files.forEach(file => {
-          console.log(`File uploaded: ${file.filename}, Path: ${file.path}`);
-          const csvFilePath = `${file.path}`;
-          const records = [];
-    
-          fs.createReadStream(csvFilePath)
-            .pipe(parse({ columns: true, skip_empty_lines: true })) // `columns: true` for header row mapping
-            .on('data', (data) => records.push(data))
-            .on('end', () => {
-              console.log('CSV data parsed:', records);
-              // Proceed to insert/update the database
-              AznPaymentsImport(records);
-              fs.unlinkSync(csvFilePath);
-              res.json({
-                'message': 'File uploaded successfully'
-              });
-            })
-            .on('error', (err) => {
-              console.error('Error parsing CSV:', err);
-              res.json({
-                'message': 'Error parsing CSV' + err
-              });
-              return;
-            });
-    
-          // Perform operations with each file, e.g., save to database, process
-        });
-    
-      
+  app.get('/role-menu-map', async (req, res) => {
+try {
+    // Promisify query
+    const query = (sql, params) => new Promise((resolve, reject) => {
+     connection.query(sql, params, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+     });
     });
-    
+
+    // 1️⃣ Get distinct roles
+    const roles = await query('SELECT DISTINCT role_name FROM role_permissions');
+
+    const roleMenuMap = {};
+
+    // 2️⃣ Get menu labels for each role
+    for (const r of roles) {
+     const permissions = await query(
+        'SELECT menu_label FROM role_permissions WHERE role_name = ?',
+        [r.role_name]
+     );
+     roleMenuMap[r.role_name.toLowerCase()] = permissions.map(p => p.menu_label);
+    }
+
+    // 3️⃣ Optional default role
+    roleMenuMap['employee'] = ['Overview'];
+
+    res.json(roleMenuMap);
+
+} catch (err) {
+    console.error('Role-menu map error:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
+}
+});
