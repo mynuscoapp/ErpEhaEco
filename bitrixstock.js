@@ -837,12 +837,12 @@ app.get('/role-menu-map', async (req, res) => {
         // Manually allow CORS (if you’re not using the cors middleware)
         res.header("Access-Control-Allow-Origin", "*");
 
-        // Connect to MySQL if not already connected
-        if (!connection._connectCalled) {
-            connection.connect();
-        }
-        console.log('Connected to MySQL database as id ' + connection.threadId);
-
+        // Connect to MySQL if not already connecte
+      console.log('Connected to MySQL database as id ' + connection.threadId);
+      if (!connection._connectCalled) {
+    connection.connect();
+  }
+      
         // Helper function to promisify queries
         const query = (sql, params) => new Promise((resolve, reject) => {
             connection.query(sql, params, (err, results) => {
