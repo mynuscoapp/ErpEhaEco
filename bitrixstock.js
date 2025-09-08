@@ -833,39 +833,86 @@ app.post('/reset-password', async (req, res) => {
 // });
 
 app.get('/role-menu-map', async (req, res) => {
-  try {
-    // Promisify query
-    const query = (sql, params) => new Promise((resolve, reject) => {
-      connection.query(sql, params, (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
+    try {
+        // Manually allow CORS (if you’re not using the cors middleware)
+        res.header("Access-Control-Allow-Origin", "*");
 
-    // 1️⃣ Get distinct roles
-    const roles = await query('SELECT DISTINCT role_name FROM role_permissions');
+        // Connect to MySQL if not already connected
+        if (!connection._connectCalled) {
+            connection.connect();
+        }
+        console.log('Connected to MySQL database as id ' + connection.threadId);
 
-    const roleMenuMap = {};
+        // Helper function to promisify queries
+        const query = (sql, params) => new Promise((resolve, reject) => {
+            connection.query(sql, params, (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+            });
+        });
 
-    // 2️⃣ Get menu labels for each role
-    for (const r of roles) {
-      const permissions = await query(
-        'SELECT menu_label FROM role_permissions WHERE role_name = ?',
-        [r.role_name]
-      );
-      roleMenuMap[r.role_name.toLowerCase()] = permissions.map(p => p.menu_label);
+        // 1️⃣ Get distinct roles
+        const roles = await query('SELECT DISTINCT role_name FROM role_permissions');
+
+        const roleMenuMap = {};
+
+        // 2️⃣ Get menu labels for each role
+        for (const r of roles) {
+            const permissions = await query(
+                'SELECT menu_label FROM role_permissions WHERE role_name = ?',
+                [r.role_name]
+            );
+            roleMenuMap[r.role_name.toLowerCase()] = permissions.map(p => p.menu_label);
+        }
+
+        // 3️⃣ Optional default role
+        if (!roleMenuMap['employee']) {
+            roleMenuMap['employee'] = ['Overview'];
+        }
+
+        res.json(roleMenuMap);
+
+    } catch (err) {
+        console.error('Role-menu map error:', err);
+        res.status(500).json({ error: 'Server error', details: err.message });
     }
-
-    // 3️⃣ Optional default role
-    roleMenuMap['employee'] = ['Overview'];
-
-    res.json(roleMenuMap);
-
-  } catch (err) {
-    console.error('Role-menu map error:', err);
-    res.status(500).json({ error: 'Server error', details: err.message });
-  }
 });
+
+
+// app.get('/role-menu-map', async (req, res) => {
+//   try {
+//     // Promisify query
+//     const query = (sql, params) => new Promise((resolve, reject) => {
+//       connection.query(sql, params, (err, results) => {
+//         if (err) reject(err);
+//         else resolve(results);
+//       });
+//     });
+
+//     // 1️⃣ Get distinct roles
+//     const roles = await query('SELECT DISTINCT role_name FROM role_permissions');
+
+//     const roleMenuMap = {};
+
+//     // 2️⃣ Get menu labels for each role
+//     for (const r of roles) {
+//       const permissions = await query(
+//         'SELECT menu_label FROM role_permissions WHERE role_name = ?',
+//         [r.role_name]
+//       );
+//       roleMenuMap[r.role_name.toLowerCase()] = permissions.map(p => p.menu_label);
+//     }
+
+//     // 3️⃣ Optional default role
+//     roleMenuMap['employee'] = ['Overview'];
+
+//     res.json(roleMenuMap);
+
+//   } catch (err) {
+//     console.error('Role-menu map error:', err);
+//     res.status(500).json({ error: 'Server error', details: err.message });
+//   }
+// });
 
 
 
@@ -1019,37 +1066,4 @@ function AznPaymentsImport(records) {
       });
     }
 
-  app.get('/role-menu-map', async (req, res) => {
-try {
-    // Promisify query
-    const query = (sql, params) => new Promise((resolve, reject) => {
-     connection.query(sql, params, (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-     });
-    });
 
-    // 1️⃣ Get distinct roles
-    const roles = await query('SELECT DISTINCT role_name FROM role_permissions');
-
-    const roleMenuMap = {};
-
-    // 2️⃣ Get menu labels for each role
-    for (const r of roles) {
-     const permissions = await query(
-        'SELECT menu_label FROM role_permissions WHERE role_name = ?',
-        [r.role_name]
-     );
-     roleMenuMap[r.role_name.toLowerCase()] = permissions.map(p => p.menu_label);
-    }
-
-    // 3️⃣ Optional default role
-    roleMenuMap['employee'] = ['Overview'];
-
-    res.json(roleMenuMap);
-
-} catch (err) {
-    console.error('Role-menu map error:', err);
-    res.status(500).json({ error: 'Server error', details: err.message });
-}
-});
