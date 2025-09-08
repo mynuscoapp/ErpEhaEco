@@ -108,7 +108,7 @@ const connection = mysql.createConnection({
   LEFT JOIN store s 
          ON bs.storeId = s.id
   LEFT JOIN product_property_value ppv 
-         ON ppv.productid = bs.id   -- ✅ use bp.id not bs.id
+         ON ppv.productid = bp.ID -- ✅ use bp.id
   WHERE bp.ACTIVE = 'Y' 
     AND s.status = 'Yes' 
     AND ppv.Propertyid = 100
