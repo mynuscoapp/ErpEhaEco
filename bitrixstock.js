@@ -17,16 +17,9 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: true
 }));
-app.use(express.json({ limit: '10mb' }));
-
-
-
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 const multer = require('multer');
-const upload = multer({ dest: './amazon-file-upload', limits: { fileSize: 1 * 1000 * 1000 * 1000 /* bytes */ } }); 
-
-
+        const upload = multer({ dest: './amazon-file-upload' }); 
 
 MYSQL_USER = 'erp_eha'
 MYSQL_PASSWORD = 'EhaERP@12345'
@@ -64,7 +57,7 @@ const connection = mysql.createConnection({
 
     //         // Close the connection
     //         connection.end((err) => {
-    //             if (err) {
+    //             if (err) {S
     //                 console.error('Error closing the connection: ' + err.stack);
     //                 return;
     //             }
@@ -73,13 +66,13 @@ const connection = mysql.createConnection({
     //     });
     // });
     
-    // const server = require('http').createServer(app);
-    // const io = require('socket.io')(server, {
-    // cors: {
-    //     origin: "*",
-    //     methods: ["GET", "POST"]
-    //     }
-    // });
+    const server = require('http').createServer(app);
+    const io = require('socket.io')(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+        }
+    });
     
     app.get('/bitrixstock', (req, res) => {
         // connection.connect((err) => {
@@ -94,10 +87,36 @@ const connection = mysql.createConnection({
               connection.connect();
               }
             // SQL query to retrieve data
-            const sql = 'SELECT bs.id, s.storeId, bs.storeid as id_of_store, bp.NAME as productName, bp.preview_picture, bs.quantity, bs.quantityReserved FROM bitrix_store_stock_availablity bs ' +
-                ' inner join bitrix_products bp ON bs.productId = bp.id ' +
-                ' LEFT JOIN  store s ON bs.storeId = s.id' +
-                ' WHERE bp.ACTIVE = "Y"' ;
+            // const sql = 'SELECT bs.id, s.storeId, bs.storeid as id_of_store, bp.NAME as productName, bp.preview_picture, bs.quantity, bs.quantityReserved FROM bitrix_store_stock_availablity bs ' +
+            //     ' inner join bitrix_products bp ON bs.productId = bp.id ' +
+            //     ' LEFT JOIN  store s ON bs.storeId = s.id' +
+            //     ' WHERE bp.ACTIVE = "Y"' ;
+
+            const sql = `
+  SELECT 
+    bs.id, 
+    ppv.value AS SKU,
+    ppv_cat.value as Category,
+    s.storeId, 
+    bs.storeid AS id_of_store,
+    bp.NAME AS productName, 
+    bp.preview_picture, 
+    bs.quantity, 
+    bs.quantityReserved
+  FROM bitrix_store_stock_availablity bs
+  INNER JOIN bitrix_products bp 
+         ON bs.productId = bp.id
+  LEFT JOIN store s 
+         ON bs.storeId = s.id
+  LEFT JOIN product_property_value ppv 
+         ON ppv.productid = bp.ID -- ✅ use bp.id
+  LEFT JOIN product_property_value ppv_cat 
+        ON ppv_cat.productid = bp.id AND ppv_cat.propertyid = 106
+  WHERE bp.ACTIVE = 'Y' 
+    AND s.status = 'Yes' 
+    AND ppv.Propertyid = 100
+`;
+
     
             // Execute the query
             connection.query(sql, (error, results, fields) => {
@@ -119,64 +138,6 @@ const connection = mysql.createConnection({
             //});
         });
       });
-//         // Close the connection
-//         connection.end((err) => {
-//             if (err) {
-//                 console.error('Error closing the connection: ' + err.stack);
-//                 return;
-//             }
-//             console.log('Connection closed.');
-//         });
-//     });
-// });
-
-const server = require('http').createServer(app);
-const io = require('socket.io')(server, {
-  cors: {
-    origin: "*",
-    methods: ["PUT","GET","POST","DELETE"],
-    responseHeader: ["Content-Type"],
-    maxAgeSeconds: 3600
-  }
-});
-
-app.get('/bitrixstock', (req, res) => {
-  // connection.connect((err) => {
-  //     if (err) {
-  //         console.error('Error connecting to the database: ' + err.stack);
-  //         return;
-  //     }
-  res.header("Access-Control-Allow-Origin", "*");
-  console.log('Connected to MySQL database as id ' + connection.threadId);
-  if (!connection._connectCalled) {
-    connection.connect();
-  }
-  // SQL query to retrieve data
-  const sql = 'SELECT bs.id, s.storeId, bs.storeid as id_of_store, bp.NAME as productName, bp.preview_picture, bs.quantity, bs.quantityReserved FROM bitrix_store_stock_availablity bs ' +
-    ' inner join bitrix_products bp ON bs.productId = bp.id ' +
-    ' LEFT JOIN  store s ON bs.storeId = s.id' +
-    ' WHERE bp.ACTIVE = "Y"';
-
-  // Execute the query
-  connection.query(sql, (error, results, fields) => {
-    if (error) {
-      console.error('Error executing query: ' + error.stack);
-      return;
-    }
-    console.log('Data retrieved:');
-    res.send(results); // 'results' contains the retrieved rows
-
-    // Close the connection
-    // connection.end((err) => {
-    //     if (err) {
-    //         console.error('Error closing the connection: ' + err.stack);
-    //         return;
-    //     }
-    //     console.log('Connection closed.');
-    // });
-    //});
-  });
-});
 
 app.get('/overallstock', (req, res) => {
   // connection.connect((err) => {
@@ -503,11 +464,12 @@ app.get('/storelist', (req, res) => {
   });
 });
 
+
+
 app.listen(port, () => {
   connection.connect();
   console.log(`Express server listening at https://localhost:${port}`);
 });
-
 
 
 app.post('/login', async (req, res) => {
@@ -646,7 +608,6 @@ connection.query(updateSql, [user.ID], (updateErr) => {
 
 
 
-
     //   app.post('/reset-password', (req, res) => {
     //     const { email, newPassword } = req.body;
     //     const sql = 'UPDATE pulse_users SET PASSWORD = ? WHERE Email = ?';
@@ -665,6 +626,7 @@ connection.query(updateSql, [user.ID], (updateErr) => {
 
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
+const { map } = require('jquery');
 
 // Configure your email transporter
 const transporter = nodemailer.createTransport({
@@ -695,7 +657,7 @@ app.post('/forgot-password', (req, res) => {
   connection.query(sqlCheck, [email], (err, results) => {
     if (err) {
       console.error('DB error in email check:', err);
-      return res.status(500).json({ error: 'Database error' });
+      return res.status(500).json({ error: 'Database error' + err });
     }
     if (results.length === 0) {
       console.log('Email not found:', email);
@@ -709,7 +671,7 @@ app.post('/forgot-password', (req, res) => {
     connection.query(sqlUpdate, [resetCode, expiryTime, email], (err2) => {
       if (err2) {
         console.error('DB error updating reset code:', err2);
-        return res.status(500).json({ error: 'Database error' });
+        return res.status(500).json({ error: 'Database error' + err2 });
       }
 
       const mailOptions = {
@@ -722,7 +684,7 @@ app.post('/forgot-password', (req, res) => {
       transporter.sendMail(mailOptions, (error) => {
         if (error) {
           console.error('Error sending email:', error);
-          return res.status(500).json({ error: 'Failed to send email' });
+          return res.status(500).json({ error: 'Failed to send email' + error });
         }
         console.log('Reset code sent to:', email);
         res.json({ message: 'Reset code sent to your email' });
@@ -954,10 +916,17 @@ app.post('/amazonpaymentsupload', upload.array("AznPaymentsUpload",10), (req, re
             
       const { startdateparam, enddateparam, intervals, groupby, filterby, filtervalue } = req.query;
 
-  //console.log(req.query);
+  console.log(req.query);
 
   const sql = `CALL GetPaymentSummary(?,?,?,?,?,?)`;
-  const params = [startdateparam, enddateparam, intervals, groupby, filterby, filtervalue];
+  const params = [
+    startdateparam || "",
+    enddateparam || "",
+    intervals || "",
+    groupby || " ",
+    filterby || " ",
+    filtervalue || " "
+  ];
 
   //console.log("SQL params:", params);
         // Execute the query
@@ -969,26 +938,16 @@ app.post('/amazonpaymentsupload', upload.array("AznPaymentsUpload",10), (req, re
              return res.status(500).json({ error: error.message, stack: error.stack });
           }
 
-          console.log('Data retrieved:', results);
+          //console.log('Data retrieved:', results);
           res.json(results[0]);
           //res.send(results); // 'results' contains the retrieved rows
-          
-          // Close the connection
-          // connection.end((err) => {
-          //     if (err) {
-          //         console.error('Error closing the connection: ' + err.stack);
-          //         return;
-          //     }
-          //     console.log('Connection closed.');
-          // });
-          //});
         });
     });
 
 
 
 
-    function AznPaymentsImport(records) {
+function AznPaymentsImport(records) {
       records.forEach(record => {
         const query = `INSERT INTO azn_payments (date, settlement_id, type, order_id, Sku, description, quantity, marketplace, account_type, fulfillment, order_city, order_state, order_postal, product_sales, shipping_credits, gift_wrap_credits, promotional_rebates, tax_liable, TCS_CGST, TCS_SGST, TCS_IGST, TDS, selling_fees, fba_fees, other_fees, other, total, last_updated)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
@@ -1059,3 +1018,38 @@ app.post('/amazonpaymentsupload', upload.array("AznPaymentsUpload",10), (req, re
         });
       });
     }
+
+  app.get('/role-menu-map', async (req, res) => {
+try {
+    // Promisify query
+    const query = (sql, params) => new Promise((resolve, reject) => {
+     connection.query(sql, params, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+     });
+    });
+
+    // 1️⃣ Get distinct roles
+    const roles = await query('SELECT DISTINCT role_name FROM role_permissions');
+
+    const roleMenuMap = {};
+
+    // 2️⃣ Get menu labels for each role
+    for (const r of roles) {
+     const permissions = await query(
+        'SELECT menu_label FROM role_permissions WHERE role_name = ?',
+        [r.role_name]
+     );
+     roleMenuMap[r.role_name.toLowerCase()] = permissions.map(p => p.menu_label);
+    }
+
+    // 3️⃣ Optional default role
+    roleMenuMap['employee'] = ['Overview'];
+
+    res.json(roleMenuMap);
+
+} catch (err) {
+    console.error('Role-menu map error:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
+}
+});
