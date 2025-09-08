@@ -304,17 +304,7 @@ app.get('/pulseusers', (req, res) => {
       return;
     }
     console.log('Data retrieved:');
-    res.send(results); // 'results' contains the retrieved rows
-
-    // Close the connection
-    // connection.end((err) => {
-    //     if (err) {
-    //         console.error('Error closing the connection: ' + err.stack);
-    //         return;
-    //     }
-    //     console.log('Connection closed.');
-    // });
-    //});
+    res.send(results); // 'results' contains the retrieved row
   });
 });
 
@@ -526,6 +516,7 @@ app.post('/login', async (req, res) => {
   if (connection.state === 'disconnected') {
     connection.connect();
   }
+  
 
  const sql = 'SELECT ID, Email, password, allowlogin, Role FROM pulse_users WHERE Email = ? LIMIT 1';
 connection.query(sql, [email], async (err, results) => {
@@ -535,7 +526,9 @@ connection.query(sql, [email], async (err, results) => {
     }
     if (results.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password' });
-    }
+  }
+  
+
 
     const user = results[0];
 
@@ -553,7 +546,17 @@ console.log("DB record:", user);
   console.log("Password match result:", passwordMatch);
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
-    }
+  }
+  
+  const updateSql = 'UPDATE pulse_users SET Last_login = NOW() WHERE ID = ?';
+connection.query(updateSql, [user.ID], (updateErr) => {
+  if (updateErr) {
+    console.error('Error updating last login:', updateErr);
+  } else {
+    console.log("✅ Last_login updated for user:", user.ID);
+  }
+});
+
 
     res.json({
       message: 'Login successful',
@@ -683,9 +686,10 @@ const transporter = nodemailer.createTransport({
 //   }
 // });
 
-// 1. Request password reset
+// 1. Request password console.log("FORGOT-PASSWORD hit:", req.body);
 app.post('/forgot-password', (req, res) => {
   const { email } = req.body;
+  console.log("FORGOT-PASSWORD hit:", req.body);
   console.log('Received forgot-password request for:', email);
   const sqlCheck = 'SELECT * FROM pulse_users WHERE Email = ? LIMIT 1';
   connection.query(sqlCheck, [email], (err, results) => {
@@ -801,38 +805,38 @@ app.post('/reset-password', async (req, res) => {
 });
 
 // Get permissions for a given user
-app.get('/api/user-permissions/:id', (req, res) => {
-  const userId = req.params.id; // pulse_users.ID
+// app.get('/api/user-permissions/:id', (req, res) => {
+//   const userId = req.params.id; // pulse_users.ID
 
-  // Step 1: Fetch user role
-  const userQuery = 'SELECT Role FROM pulse_users WHERE ID = ?';
-  connection.query(userQuery, [userId], (err, userResult) => {
-    if (err) {
-      console.error('Error fetching user role:', err);
-      return res.status(500).json({ message: 'Error fetching user role' });
-    }
+//   // Step 1: Fetch user role
+//   const userQuery = 'SELECT Role FROM pulse_users WHERE ID = ?';
+//   connection.query(userQuery, [userId], (err, userResult) => {
+//     if (err) {
+//       console.error('Error fetching user role:', err);
+//       return res.status(500).json({ message: 'Error fetching user role' });
+//     }
 
-    if (userResult.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+//     if (userResult.length === 0) {
+//       return res.status(404).json({ message: 'User not found' });
+//     }
 
-    const role = userResult[0].Role;
+//     const role = userResult[0].Role;
 
-    // Step 2: Fetch permissions for that role
-    const permQuery = 'SELECT menu_label, route_path FROM role_permissions WHERE role_name = ?';
-    connection.query(permQuery, [role], (err, permResult) => {
-      if (err) {
-        console.error('Error fetching permissions:', err);
-        return res.status(500).json({ message: 'Error fetching permissions' });
-      }
+//     // Step 2: Fetch permissions for that role
+//     const permQuery = 'SELECT menu_label, route_path FROM role_permissions WHERE role_name = ?';
+//     connection.query(permQuery, [role], (err, permResult) => {
+//       if (err) {
+//         console.error('Error fetching permissions:', err);
+//         return res.status(500).json({ message: 'Error fetching permissions' });
+//       }
 
-      res.json({
-        role: role,
-        permissions: permResult
-      });
-    });
-  });
-});
+//       res.json({
+//         role: role,
+//         permissions: permResult
+//       });
+//     });
+//   });
+// });
 
 
 // app.post('/reset-password', async (req, res) => {
@@ -866,74 +870,46 @@ app.get('/api/user-permissions/:id', (req, res) => {
 //   });
 // });
 
-// app.post('/verify-reset-code', (req, res) => {
-//   const { email, resetCode } = req.body;
+app.get('/role-menu-map', async (req, res) => {
+  try {
+    // Promisify query
+    const query = (sql, params) => new Promise((resolve, reject) => {
+      connection.query(sql, params, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
 
-//   const sql = 'SELECT reset_code_expiry FROM pulse_users WHERE Email = ? AND reset_code = ? LIMIT 1';
-//   connection.query(sql, [email, resetCode], (err, results) => {
-//     if (err) {
-//       console.error('Database error:', err);
-//       return res.status(500).json({ error: 'Database error' });
-//     }
-//     if (results.length === 0) {
-//       return res.status(400).json({ error: 'Invalid code or email' });
-//     }
+    // 1️⃣ Get distinct roles
+    const roles = await query('SELECT DISTINCT role_name FROM role_permissions');
 
-//     const expiry = results[0].reset_code_expiry;
-//     if (new Date() > new Date(expiry)) {
-//       return res.status(400).json({ error: 'Code expired' });
-//     }
+    const roleMenuMap = {};
 
-//     res.json({ success: true, message: 'Code verified' });
-//   });
-// });
+    // 2️⃣ Get menu labels for each role
+    for (const r of roles) {
+      const permissions = await query(
+        'SELECT menu_label FROM role_permissions WHERE role_name = ?',
+        [r.role_name]
+      );
+      roleMenuMap[r.role_name.toLowerCase()] = permissions.map(p => p.menu_label);
+    }
+
+    // 3️⃣ Optional default role
+    roleMenuMap['employee'] = ['Overview'];
+
+    res.json(roleMenuMap);
+
+  } catch (err) {
+    console.error('Role-menu map error:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
 
 
-// const bcrypt = require('bcrypt');
 
-// app.post('/reset-password', async (req, res) => {
-//   const { email, resetCode, newPassword } = req.body;
 
-//   if (!email || !resetCode || !newPassword) {
-//     return res.status(400).json({ error: 'Email, reset code, and new password are required' });
-//   }
 
-//   // Check if code matches and not expired
-//   const sqlSelect = 'SELECT reset_code_expiry FROM pulse_users WHERE Email = ? AND reset_code = ? LIMIT 1';
-//   connection.query(sqlSelect, [email, resetCode], async (err, results) => {
-//     if (err) {
-//       console.error('DB error:', err);
-//       return res.status(500).json({ error: 'Database error' });
-//     }
-//     if (results.length === 0) {
-//       return res.status(400).json({ error: 'Invalid reset code or email' });
-//     }
 
-//     const expiry = results[0].reset_code_expiry;
-//     if (new Date() > new Date(expiry)) {
-//       return res.status(400).json({ error: 'Reset code expired' });
-//     }
-
-//     try {
-//       const hashedPassword = await bcrypt.hash(newPassword, 10);
-//       const sqlUpdate = 'UPDATE pulse_users SET password = ?, reset_code = NULL, reset_code_expiry = NULL WHERE Email = ?';
-//       connection.query(sqlUpdate, [hashedPassword, email], (err2, result) => {
-//         if (err2) {
-//           console.error('DB error:', err2);
-//           return res.status(500).json({ error: 'Database error' });
-//         }
-//         if (result.affectedRows > 0) {
-//           res.json({ success: true, message: 'Password updated successfully' });
-//         } else {
-//           res.status(404).json({ error: 'User not found' });
-//         }
-//       });
-//     } catch (hashErr) {
-//       console.error('Hashing error:', hashErr);
-//       return res.status(500).json({ error: 'Error updating password' });
-//     }
-//   });
-// });
 app.post('/amazonpaymentsupload', upload.array("AznPaymentsUpload",10), (req, res) => {
   res.header("Access-Control-Allow-Origin", "*");
   
@@ -1010,25 +986,7 @@ app.post('/amazonpaymentsupload', upload.array("AznPaymentsUpload",10), (req, re
     });
 
 
-    //   app.use(function (req, res, next) {
 
-    //     cors({origin: '*'});
-    //     // Website you wish to allow to connect
-    //     res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    //     // Request methods you wish to allow
-    //     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-    
-    //     // Request headers you wish to allow
-    //     res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
-    
-    //     // Set to true if you need the website to include cookies in the requests sent
-    //     // to the API (e.g. in case you use sessions)
-    //     res.setHeader('Access-Control-Allow-Credentials', true);
-    
-    //     // Pass to next layer of middleware
-    //     next();
-    // });
 
     function AznPaymentsImport(records) {
       records.forEach(record => {
