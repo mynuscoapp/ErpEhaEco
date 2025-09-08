@@ -11,7 +11,7 @@ const { parse } = require('csv-parse');
 const multipartMiddleware = multipart({
   uploadDir: './amazon-file-upload'
 });
-app.use(cors());
+// app.use(cors());
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
@@ -34,6 +34,11 @@ const connection = mysql.createConnection({
   password: MYSQL_PASSWORD, // Your MySQL password
   database: MYSQL_DATABASE // The name of your database
 });
+
+app.use(cors({
+  origin: 'https://pulse.eha.eco', // only allow your frontend
+  methods: ['GET','POST','PUT','DELETE','OPTIONS']
+}));
 
 // Connect to the database
 // connection.connect((err) => {
