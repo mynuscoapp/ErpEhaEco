@@ -96,6 +96,7 @@ const connection = mysql.createConnection({
   SELECT 
     bs.id, 
     ppv.value AS SKU,
+    ppv_cat.value as Category,
     s.storeId, 
     bs.storeid AS id_of_store,
     bp.NAME AS productName, 
@@ -109,6 +110,8 @@ const connection = mysql.createConnection({
          ON bs.storeId = s.id
   LEFT JOIN product_property_value ppv 
          ON ppv.productid = bp.ID -- ✅ use bp.id
+  LEFT JOIN product_property_value ppv_cat 
+        ON ppv_cat.productid = bp.id AND ppv_cat.propertyid = 106
   WHERE bp.ACTIVE = 'Y' 
     AND s.status = 'Yes' 
     AND ppv.Propertyid = 100
