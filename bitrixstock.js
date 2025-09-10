@@ -11,7 +11,7 @@ const { parse } = require('csv-parse');
 const multipartMiddleware = multipart({
   uploadDir: './amazon-file-upload'
 });
-// app.use(cors());
+app.use(cors());
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
@@ -35,10 +35,11 @@ const connection = mysql.createConnection({
   database: MYSQL_DATABASE // The name of your database
 });
 
-app.use(cors({
-  origin: 'https://pulse.eha.eco', // only allow your frontend
-  methods: ['GET','POST','PUT','DELETE','OPTIONS']
-}));
+// app.use(cors({
+//   origin: 'https://pulse.eha.eco', // only allow your frontend
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization']
+// }));
 
 // Connect to the database
 // connection.connect((err) => {
@@ -49,7 +50,7 @@ app.use(cors({
 //     console.log('Connected to MySQL database as id ' + connection.threadId);
 
 //     // SQL query to retrieve data
-//     const sql = 'SELECT bs.storeId, bs.productId, bp.NAME, bs.quantity, bs.quantityReserved FROM bitrix_store_stock_availablity bs inner join bitrix_products bp ON bs.productId = bp.id;'; // Replace with your table name
+//     const sql = 'SELECT bs.storeId, bs.productId, bp.NAME, bs.quantity, bs.quantityReserved FROM bitrix_stock bs inner join bitrix_products bp ON bs.productId = bp.id;'; // Replace with your table name
 
 //     // Execute the query
 //     connection.query(sql, (error, results, fields) => {
@@ -92,7 +93,7 @@ app.use(cors({
               connection.connect();
               }
             // SQL query to retrieve data
-            // const sql = 'SELECT bs.id, s.storeId, bs.storeid as id_of_store, bp.NAME as productName, bp.preview_picture, bs.quantity, bs.quantityReserved FROM bitrix_store_stock_availablity bs ' +
+            // const sql = 'SELECT bs.id, s.storeId, bs.storeid as id_of_store, bp.NAME as productName, bp.preview_picture, bs.quantity, bs.quantityReserved FROM bitrix_stock bs ' +
             //     ' inner join bitrix_products bp ON bs.productId = bp.id ' +
             //     ' LEFT JOIN  store s ON bs.storeId = s.id' +
             //     ' WHERE bp.ACTIVE = "Y"' ;
@@ -108,7 +109,7 @@ app.use(cors({
     bp.preview_picture, 
     bs.quantity, 
     bs.quantityReserved
-  FROM bitrix_store_stock_availablity bs
+  FROM bitrix_stock bs
   INNER JOIN bitrix_products bp 
          ON bs.productId = bp.id
   LEFT JOIN store s 
@@ -156,7 +157,7 @@ app.get('/overallstock', (req, res) => {
     connection.connect();
   }
   // SQL query to retrieve data
-  const sql = 'select productId , SUM(quantity ) as overallQuantity, SUM(quantityReserved) as overallreserved from bitrix_store_stock_availablity group BY productId ;';
+  const sql = 'select productId , SUM(quantity ) as overallQuantity, SUM(quantityReserved) as overallreserved from bitrix_stock group BY productId ;';
 
   // Execute the query
   connection.query(sql, (error, results, fields) => {
