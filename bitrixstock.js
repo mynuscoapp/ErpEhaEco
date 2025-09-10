@@ -1071,5 +1071,32 @@ function AznPaymentsImport(records) {
         });
       });
     }
+app.get("/filter-values", async(req, res) => {
+  const filterBy = req.query.filterby; // "Category" or "Product"
+
+  let column = "Category"; 
+  if (filterBy === "Product" || filterBy === "product"){
+    column = "product";
+  } 
+  if  (filterBy === "SKU" || filterBy === "sku")
+    {
+      column = "SKU";
+    } 
+  if(filterBy === "None") {
+    column = "";
+  }
+  if (!column) {
+    return res.send([]); // nothing selected
+  }
+  const sql = `SELECT DISTINCT ${column} AS value FROM sku_info`;
+  console.log("Executing SQL:", sql);
+  connection.query(sql, (err, results) => {
+    if (err) return res.status(500).send(err);
+    //res.json(results.map(r => r.value));
+    const values = results.map(r => r.value);
+    res.json(values);
+   //res.send(values);
+  });
+});
 
 
