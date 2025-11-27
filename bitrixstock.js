@@ -98,11 +98,10 @@ const connection = mysql.createConnection({
             //     ' LEFT JOIN  store s ON bs.storeId = s.id' +
             //     ' WHERE bp.ACTIVE = "Y"' ;
 
-            const sql = `
-  SELECT 
+            const sql = `SELECT 
     bs.id, 
     ppv.value AS SKU,
-    ppv_cat.value as Category,
+    bpc.value as Category,
     s.storeId, 
     bs.storeid AS id_of_store,
     bp.NAME AS productName, 
@@ -118,10 +117,40 @@ const connection = mysql.createConnection({
          ON ppv.productid = bp.ID -- ✅ use bp.id
   LEFT JOIN product_property_value ppv_cat 
         ON ppv_cat.productid = bp.id AND ppv_cat.propertyid = 106
+        left join bitrix_product_category bpc on bpc.id = ppv_cat.value 
   WHERE bp.ACTIVE = 'Y' 
     AND s.status = 'Yes' 
-    AND ppv.Propertyid = 100
+    AND ppv.Propertyid = 100;
 `;
+// const sql =`SELECT 
+//     bs.id, 
+//     ppv.value AS SKU,
+//     ppv_cat.value AS CategoryID,
+//     pp.name AS Category,   -- comes from product_property (id=106 → "Category")
+//     s.storeId, 
+//     bs.storeid AS id_of_store,
+//     bp.name AS productName, 
+//     bp.preview_picture, 
+//     bs.quantity, 
+//     bs.quantityReserved
+// FROM bitrix_stock bs
+// INNER JOIN bitrix_products bp 
+//        ON bs.productId = bp.id 
+// LEFT JOIN store s 
+//        ON bs.storeId = s.id
+// -- SKU join (propertyid=100)
+// LEFT JOIN product_property_value ppv 
+//        ON ppv.productid = bp.id 
+//       AND ppv.propertyid = 100
+// -- Category join (propertyid=106)
+// LEFT JOIN product_property_value ppv_cat 
+//        ON ppv_cat.productid = bp.id 
+//       AND ppv_cat.propertyid = 106
+// LEFT JOIN product_property pp 
+//        ON pp.id = 106   -- directly reference "Category" property
+// WHERE bp.active = "Y"
+//   AND s.status = "Yes";
+// `
 
     
             // Execute the query
