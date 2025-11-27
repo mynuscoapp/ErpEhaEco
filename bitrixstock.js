@@ -22,7 +22,7 @@ const multer = require('multer');
         const upload = multer({ dest: './amazon-file-upload' }); 
 
 MYSQL_USER = 'erp_eha'
-MYSQL_PASSWORD = 'EhaERP@12345'
+MYSQL_PASSWORD = 'Insights!234'
 MYSQL_HOST = '147.93.29.200'
 
 MYSQL_DATABASE = 'erp_eha'
@@ -322,7 +322,9 @@ app.put('/pulseusers/:id', (req, res) => {
           Department = ?,
           Position = ?,
           Date_of_birth = ?,
-          Gender = ?
+          Gender = ?,
+          allowlogin = ?,
+          Role = ?
           WHERE ID = ?
        `;
 
@@ -334,6 +336,8 @@ app.put('/pulseusers/:id', (req, res) => {
     updatedUser.Position,
     updatedUser.Date_of_birth,
     updatedUser.Gender,
+    updatedUser.allowlogin,
+    updatedUser.Role,
     userId
   ];
 
